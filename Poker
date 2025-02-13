@@ -1,0 +1,221 @@
+import random
+
+# Talia kart
+figury = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+kolory = ['♥', '♦', '♣', '♠']
+talia = [f + k for f in figury for k in kolory]
+
+def rozdaj_karty(ile):
+    return [talia.pop() for _ in range(ile)]
+
+def ocena_ukladu(reka):
+    figury_reki = [karta[:-1] for karta in reka]
+    kolory_reki = [karta[-1] for karta in reka]
+
+    figury_reki.sort(key=lambda x: figury.index(x), reverse=True)
+
+    licznik = {figura: figury_reki.count(figura) for figura in figury_reki}
+    max_wartosc = max(licznik.values())
+
+    if len(set(kolory_reki)) == 1:
+        if figury_reki == ['A', 'K', 'Q', 'J', '10']:
+            return (10, "Poker Królewski (Royal Flush)", reka)
+        if jest_strita(figury_reki):
+            return (9, "Poker (Straight Flush)", reka)
+        return (5, "Kolor", reka)
+
+    if jest_strita(figury_reki):
+        return (8, "Strit", reka)
+
+    if max_wartosc == 4:
+        return (7, "Kareta", reka)
+    elif max_wartosc == 3 and 2 in licznik.values():
+        return (6, "Full", reka)
+    elif max_wartosc == 3:
+        return (5, "Trójka", reka)
+    elif list(licznik.values()).count(2) == 2:
+        return (4, "Dwie pary", reka)
+    elif max_wartosc == 2:
+        return (2, "Para", reka)
+    else:
+        return (1, "Najwyższa karta", reka)
+
+def jest_strita(figury_reki):
+    indexy = [figury.index(figura) for figura in figury_reki]
+    indexy.sort()
+    if indexy == list(range(indexy[0], indexy[0] + len(indexy))):
+        return True
+    if indexy == list(range(9, 14)):
+        return True
+    return False
+
+def porownaj_kickera(reka1, reka2):
+    figury1 = [karta[:-1] for karta in reka1]
+    figury2 = [karta[:-1] for karta in reka2]
+
+    kicker1 = [karta for karta in reka1 if figury1.count(karta[:-1]) == 1]
+    kicker2 = [karta for karta in reka2 if figury2.count(karta[:-1]) == 1]
+
+    kicker1.sort(key=lambda x: figury.index(x[:-1]), reverse=True)
+    kicker2.sort(key=lambda x: figury.index(x[:-1]), reverse=True)
+
+    for k1, k2 in zip(kicker1, kicker2):
+        if figury.index(k1[:-1]) > figury.index(k2[:-1]):
+            return 1
+        elif figury.index(k1[:-1]) < figury.index(k2[:-1]):
+            return -1
+
+    return 0
+
+def decyzja_gracza():
+    global zetony, aktualna_pula, aktualna_stawka
+    while True:
+        print(f"Twoje zetony: {zetony}, Aktualna pula: {aktualna_pula}")
+        decyzja = input("Co chcesz zrobić? (R)ezygnuję, (S)prawdzam, (P)odbijam: ").lower()
+        if decyzja == 'r':
+            print("Zrezygnowałeś, jesteś już poza rozdaniem.")
+            return 'Rezygnacja', 0
+        elif decyzja == 's':
+            print("Sprawdziłeś, nie podbiłeś.")
+            return 'Sprawdzenie', 0
+        elif decyzja == 'p':
+            while True:
+                try:
+                    kwota = int(input("Ile chcesz podbić? "))
+                    if kwota > zetony:
+                        print("Nie masz tylu żetonów!")
+                    else:
+                        zetony -= kwota
+                        aktualna_pula += kwota
+                        aktualna_stawka += kwota
+                        print(f"Podbiłeś o {kwota} żetonów.")
+                        return 'Podbicie', kwota  # Podbicie
+                except ValueError:
+                    print("Podaj poprawną liczbę.")
+        print("Niepoprawny wybór. Wybierz R, S lub P.")
+
+def decyzja_bota(bot_index):
+    global aktualna_pula, aktualna_stawka
+    decyzje = ['c', 'r']  
+    wybor = random.choice(decyzje) 
+    if wybor == 'r':  
+        podbicie = random.randint(1, boty_zetony[bot_index])  
+        boty_zetony[bot_index] -= podbicie
+        aktualna_pula += podbicie
+        aktualna_stawka += podbicie
+        print(f"Bot {bot_index + 1} podbił o {podbicie} żetonów.")
+        return 'Podbicie', podbicie
+    else:  
+        print(f"Bot {bot_index + 1} sprawdził.")
+        return 'Sprawdzenie', 0
+
+while True:
+    talia = [f + k for f in figury for k in kolory]
+    random.shuffle(talia)
+
+    if 'zetony' not in globals():
+        zetony = 100 
+        boty_zetony = [100, 100, 100]  
+
+    if zetony < 10 or any(bot < 10 for bot in boty_zetony):  
+        print("JEDEN Z GRACZY NIE MA WYSTARCZAJĄCEJ ILOŚCI ŻETONÓW DO DALSZEJ GRY.")
+        break
+
+    stawka = 10  
+    aktualna_stawka = stawka
+    aktualna_pula = 0
+    zetony -= stawka
+    aktualna_pula += stawka
+    for i in range(3):
+        boty_zetony[i] -= stawka
+        aktualna_pula += stawka
+
+    print("\nWitamy w Texas Hold'em Poker!")
+    print(f"Masz {zetony} żetonów. Stawka początkowa wynosi {stawka}.")
+
+    gracz = rozdaj_karty(2)
+    boty = [rozdaj_karty(2) for _ in range(3)]
+
+    print("Twoje karty:", gracz)
+
+    stol = []
+    fazy = [3, 1, 1]
+
+    active_gracz = True
+    active_bot = [True, True, True]
+    decyzje = []  
+
+    for ile_kart in fazy:
+        stol.extend(rozdaj_karty(ile_kart))
+        print(f"\nTwoje karty: {gracz}")
+        print(f"Karty na stole: {stol}")
+
+        if active_gracz:
+            decyzja, kwota = decyzja_gracza()
+            decyzje.append(('Ty', decyzja))
+            print(f"Twoja decyzja: {decyzja}, Podbito: {kwota} żetonów")
+            if decyzja == 'Rezygnacja':
+                active_gracz = False  
+                break  
+        else:
+            print("Jesteś już poza rozdaniem.")
+            decyzja, kwota = 'Rezygnacja', 0
+            decyzje.append(('Ty', decyzja))
+
+        for i in range(3):
+            if active_bot[i]:
+                decyzja, kwota = decyzja_bota(i)
+                decyzje.append((f"Bot {i + 1}", decyzja))
+
+        print(f"Aktualna pula: {aktualna_pula}")
+
+        pozostali_w_grze = [decyzja for _, decyzja in decyzje]
+
+        
+        if active_gracz == False:
+            break  
+
+        if pozostali_w_grze.count('c') == 4 and pozostali_w_grze.count('r') == 0:
+            print("Wszyscy sprawdzili, nikt nie podbił. Gra się kończy!")
+            break
+
+    if active_gracz:
+        print("Gra kończy się, porównujemy układy ...")  
+
+    aktywni_gracze = [(nazwa, karty, ocena) for (nazwa, karty, ocena) in [
+        ("Ty", gracz, ocena_ukladu(gracz + stol))
+    ] + [(f"Bot {i + 1}", boty[i], ocena_ukladu(boty[i] + stol)) for i in range(3)]
+                      if not any(decyzja == 'Rezygnacja' for _, decyzja in decyzje)]
+
+    if len(aktywni_gracze) == 0:
+        break
+
+    print("\nWyniki:")
+    for nazwa, karty, (wartosc, uklad, reka) in aktywni_gracze:
+        print(f"{nazwa}: {uklad}, Karty: {karty}, Karty na stole: {stol}")
+
+    winners = sorted(aktywni_gracze, key=lambda x: x[2][0], reverse=True)
+
+    if winners[0][2][0] == winners[1][2][0]:  
+        wynik = porownaj_kickera(winners[0][1], winners[1][1])
+        if wynik == 1:
+            winner = winners[0]
+        elif wynik == -1:
+            winner = winners[1]
+        else:
+            winner = winners[0]  
+    else:
+        winner = winners[0]
+
+    if winner[0] == "Ty":
+        zetony += aktualna_pula
+    else:
+        boty_zetony[int(winner[0][-1]) - 1] += aktualna_pula
+
+    print(f"Wygrywa {winner[0]} i otrzymuje pulę {aktualna_pula} żetonów!")
+    print(f"Końcowe saldo: Ty: {zetony}, Boty: {boty_zetony}")
+
+    kontynuacja = input("Czy chcesz zagrać ponownie? (t/n): ").lower()
+    if kontynuacja != 't':
+        print("Dziękujemy za grę!")
+        break
